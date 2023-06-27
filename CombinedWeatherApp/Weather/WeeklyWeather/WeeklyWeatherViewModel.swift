@@ -36,8 +36,14 @@ class WeeklyWeatherViewModel: ObservableObject, Identifiable {
   private let weatherFetcher: WeatherFetcher
   private var disposeable = Set<AnyCancellable>()
   
-  init(weatherFetcher: WeatherFetcher) {
+  init(weatherFetcher: WeatherFetcher, scheduler: DispatchQueue = DispatchQueue(label: "WeatherViewModel")) {
     self.weatherFetcher = weatherFetcher
+    
+    $city
+      .dropFirst(1)
+      .debounce(for: .seconds(0.5), scheduler: scheduler)
+      .sink(receiveValue: fetchWeekly(forCity:))
+      .store(in: &disposeable)
   }
   
   func fetchWeekly(forCity city: String) {
