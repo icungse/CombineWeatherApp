@@ -26,3 +26,44 @@
 /// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 /// THE SOFTWARE.
 
+import Combine
+import SwiftUI
+
+class CurrentWeatherViewModel: ObservableObject, Identifiable {
+  @Published var dataSource: CurrentWeatherRowViewModel?
+  
+  let city: String
+  private let weatherFetcher: WeatherFetcher
+  private var disposeable = Set<AnyCancellable>()
+  
+  init(city: String, weatherFetcher: WeatherFetcher) {
+    self.city = city
+    self.weatherFetcher = weatherFetcher
+  }
+  
+  func refresh() {
+    weatherFetcher
+      .currentWeatherForecast(forCity: city)
+      .map(CurrentWeatherRowViewModel.init)
+      .receive(on: DispatchQueue.main)
+      .sink(receiveCompletion: { [weak self] value in
+        guard let self = self else {
+          return
+        }
+        
+        switch value {
+        case .failure:
+          self.dataSource = nil
+        case .finished:
+          break
+        }
+      }, receiveValue: { [weak self] weather in
+        guard let self = self else {
+          return
+        }
+        
+        self.dataSource = weather
+      })
+      .store(in: &disposeable)
+  }
+}
